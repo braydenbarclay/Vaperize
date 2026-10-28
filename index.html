@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Quit Quest</title>
+<meta name="theme-color" content="#05060f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Quit Quest">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+  :root{
+    --bg:#05060f; --text:#eaf0ff; --muted:#8c97c2; --accent:#7cf0ff; --danger:#ff4d6d;
+    --glass:rgba(18,22,48,.55); --line:rgba(140,160,255,.22);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    overscroll-behavior:none;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+  body{
+    background:
+      radial-gradient(70% 45% at 15% 8%, rgba(120,70,255,.28), transparent 70%),
+      radial-gradient(60% 40% at 90% 30%, rgba(0,200,255,.16), transparent 70%),
+      radial-gradient(80% 50% at 50% 105%, rgba(255,70,140,.18), transparent 70%),
+      var(--bg);
+  }
+  #stars{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+  #app{position:relative;z-index:1;min-height:100dvh;display:flex;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 18px);
+    max-width:520px;margin:0 auto}
+  h1{margin:0;font-size:12px;letter-spacing:.42em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+  .hero{margin-top:14px;display:flex;flex-direction:column;align-items:center}
+  #badge{width:min(58vw,230px);height:min(58vw,230px);filter:drop-shadow(0 0 22px var(--glow,#7cf0ff));
+    animation:float 5s ease-in-out infinite}
+  @keyframes float{50%{transform:translateY(-8px)}}
+  #badge svg{width:100%;height:100%;overflow:visible}
+  .spin{transform-origin:50px 50px;animation:spin 24s linear infinite}
+  .spin.rev{animation-direction:reverse;animation-duration:36s}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #rankName{margin-top:6px;font-size:26px;font-weight:800;letter-spacing:.04em;
+    background:linear-gradient(90deg,#fff,var(--glow,#7cf0ff));-webkit-background-clip:text;background-clip:text;color:transparent}
+  #rankNum{font-size:11px;letter-spacing:.3em;color:var(--muted);text-transform:uppercase;margin-top:2px}
+  #timer{margin-top:12px;font-variant-numeric:tabular-nums;font-size:34px;font-weight:700;letter-spacing:.02em;
+    text-shadow:0 0 18px rgba(124,240,255,.45)}
+  #timer small{font-size:13px;color:var(--muted);font-weight:600;margin:0 6px 0 2px;letter-spacing:.1em}
+  #timerLabel{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+
+  .card{width:100%;margin-top:16px;background:var(--glass);border:1px solid var(--line);border-radius:18px;
+    padding:14px 16px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .xprow{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:8px}
+  .xprow b{color:var(--text)}
+  .bar{height:12px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;position:relative}
+  #fill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#6a5cff,var(--glow,#7cf0ff));
+    box-shadow:0 0 14px var(--glow,#7cf0ff);transition:width .9s cubic-bezier(.2,.8,.2,1)}
+  #next{font-size:12px;color:var(--muted);margin-top:10px;text-align:center}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;width:100%}
+  .stat{background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:10px 6px;text-align:center}
+  .stat b{display:block;font-size:18px}
+  .stat span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+  .ladder{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 6px;margin-top:6px;scrollbar-width:none}
+  .ladder::-webkit-scrollbar{display:none}
+  .rung{flex:0 0 64px;text-align:center;font-size:9px;letter-spacing:.06em;color:var(--muted)}
+  .rung svg{width:52px;height:52px}
+  .rung.locked svg{filter:grayscale(1) brightness(.45)}
+  .rung.cur{color:var(--text)}
+  .rung.cur svg{filter:drop-shadow(0 0 8px var(--c))}
+
+  .spacer{flex:1;min-height:14px}
+  #hit{width:100%;padding:18px;border-radius:18px;border:1.5px solid rgba(255,77,109,.7);color:#ffd6dd;
+    background:linear-gradient(180deg,rgba(255,77,109,.18),rgba(255,77,109,.06));font-size:17px;font-weight:800;
+    letter-spacing:.12em;text-transform:uppercase;box-shadow:0 0 24px rgba(255,77,109,.18)}
+  #hit:active{transform:scale(.98)}
+  .foot{margin-top:12px;font-size:11px;color:var(--muted);opacity:.7}
+  .foot a{color:inherit;text-decoration:underline}
+
+  /* overlays */
+  .overlay{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;flex-direction:column;
+    background:rgba(3,4,12,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);text-align:center;padding:24px}
+  .overlay.show{display:flex;animation:fadein .35s ease}
+  @keyframes fadein{from{opacity:0}}
+  #fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .ru-title{font-size:15px;letter-spacing:.5em;text-transform:uppercase;color:var(--accent);animation:rise .8s .1s both}
+  .ru-badge{width:min(70vw,290px);height:min(70vw,290px);margin:18px 0 8px;animation:pop 1.1s cubic-bezier(.2,1.3,.3,1) both;
+    filter:drop-shadow(0 0 40px var(--glow,#7cf0ff))}
+  .ru-badge svg{width:100%;height:100%;overflow:visible}
+  .ru-name{font-size:34px;font-weight:900;letter-spacing:.05em;animation:rise .8s .5s both}
+  .ru-sub{margin-top:8px;color:var(--muted);font-size:14px;animation:rise .8s .8s both}
+  .ru-tap{margin-top:28px;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);animation:blink 1.6s 1.6s infinite both}
+  @keyframes pop{0%{transform:scale(.1) rotate(-200deg);opacity:0}60%{transform:scale(1.15) rotate(8deg);opacity:1}100%{transform:scale(1) rotate(0)}}
+  @keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+  @keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
+  .down .ru-title{color:var(--danger)}
+  .down .ru-badge{animation:drop 1s ease both}
+  @keyframes drop{0%{transform:scale(1.2);opacity:0}30%{transform:scale(1)}100%{transform:scale(1);filter:grayscale(.8) drop-shadow(0 0 30px #ff4d6d)}}
+
+  .sheet{align-items:flex-end;padding:0}
+  .sheet .panel{width:100%;max-width:520px;background:#0d1130;border:1px solid var(--line);border-radius:24px 24px 0 0;
+    padding:24px 22px calc(env(safe-area-inset-bottom) + 22px);text-align:left;animation:rise .35s both}
+  .panel h2{margin:0 0 6px;font-size:20px}
+  .panel p{margin:0 0 16px;color:var(--muted);font-size:14px;line-height:1.45}
+  .panel input{width:100%;padding:13px;border-radius:12px;border:1px solid var(--line);background:#070a22;color:var(--text);
+    font-size:16px;margin-bottom:16px;color-scheme:dark}
+  .btns{display:flex;gap:10px}
+  .btns button{flex:1;padding:15px;border-radius:14px;border:1px solid var(--line);background:#161b45;color:var(--text);font-size:15px;font-weight:700}
+  .btns .primary{background:linear-gradient(90deg,#5b4dff,#2fc7ff);border:0;color:#041020}
+  .btns .danger{background:var(--danger);border:0;color:#fff}
+
+  .shake{animation:shake .55s}
+  @keyframes shake{20%{transform:translateX(-10px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+  #flash{position:fixed;inset:0;z-index:40;background:#ff1744;opacity:0;pointer-events:none}
+  #flash.go{animation:flash .6s}
+  @keyframes flash{0%{opacity:.45}100%{opacity:0}}
+  #toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 18px);transform:translate(-50%,-80px);z-index:60;
+    background:#1a0f1c;border:1px solid rgba(255,77,109,.6);color:#ffd6dd;padding:10px 18px;border-radius:99px;font-weight:700;
+    transition:transform .4s cubic-bezier(.2,1.2,.3,1)}
+  #toast.show{transform:translate(-50%,0)}
+  @media (prefers-reduced-motion:reduce){#badge,.spin{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<div id="flash"></div>
+<div id="toast"></div>
+
+<main id="app">
+  <h1>Quit Quest</h1>
+
+  <section class="hero">
+    <div id="badge"></div>
+    <div id="rankName"></div>
+    <div id="rankNum"></div>
+    <div id="timer"></div>
+    <div id="timerLabel">Time vape-free</div>
+  </section>
+
+  <section class="card">
+    <div class="xprow"><span><b id="xpNow">0</b> XP</span><span id="xpGoal"></span></div>
+    <div class="bar"><div id="fill"></div></div>
+    <div id="next"></div>
+  </section>
+
+  <section class="stats">
+    <div class="stat"><b id="sBest">0d</b><span>Best streak</span></div>
+    <div class="stat"><b id="sDays">0</b><span>Days earned</span></div>
+    <div class="stat"><b id="sHits">0</b><span>Slips</span></div>
+  </section>
+
+  <section class="card" style="padding:10px 12px">
+    <div class="ladder" id="ladder"></div>
+  </section>
+
+  <div class="spacer"></div>
+  <button id="hit">Vape hit</button>
+  <div class="foot"><a href="#" id="resetLink">Reset everything</a></div>
+</main>
+
+<!-- first-run setup -->
+<div class="overlay sheet" id="setup">
+  <div class="panel">
+    <h2>Start your journey</h2>
+    <p>When was your last vape? You'll earn XP for every full 24 hours since then. Leave it as "now" if it was just now.</p>
+    <input type="datetime-local" id="startInput">
+    <div class="btns"><button class="primary" id="startBtn">Begin</button></div>
+  </div>
+</div>
+
+<!-- confirm hit -->
+<div class="overlay sheet" id="confirm">
+  <div class="panel">
+    <h2>Log a vape hit?</h2>
+    <p id="confirmText"></p>
+    <div class="btns"><button id="cancelHit">Cancel</button><button class="danger" id="okHit">Log it</button></div>
+  </div>
+</div>
+
+<!-- rank up / down -->
+<div class="overlay" id="rankOverlay">
+  <canvas id="fx"></canvas>
+  <div class="ru-title" id="ruTitle">Rank up</div>
+  <div class="ru-badge" id="ruBadge"></div>
+  <div class="ru-name" id="ruName"></div>
+  <div class="ru-sub" id="ruSub"></div>
+  <div class="ru-tap">Tap to continue</div>
+</div>
+
+<script>
+/* ============ SETTINGS (edit these) ============ */
+const DAY_MS      = 24*60*60*1000;
+const DAY_XP      = 100;   // XP earned per full 24h without vaping
+const HIT_PENALTY = 150;   // XP lost per vape hit
+const RANKS = [
+  {name:"Space Cadet",     xp:0,    c:"#9aa7c7", c2:"#5c6a8f"},
+  {name:"Cosmonaut",       xp:100,  c:"#7cf0ff", c2:"#2a8fb0"},
+  {name:"Pilot",           xp:300,  c:"#6df7a8", c2:"#1f9b62"},
+  {name:"Navigator",       xp:600,  c:"#b6f56a", c2:"#6b9a1b"},
+  {name:"Commander",       xp:1000, c:"#ffd95a", c2:"#c08a10"},
+  {name:"Captain",         xp:1600, c:"#ffa94d", c2:"#c0560e"},
+  {name:"Star Admiral",    xp:2400, c:"#ff6b8b", c2:"#b01e49"},
+  {name:"Galactic Warden", xp:3500, c:"#d17bff", c2:"#7a24c9"},
+  {name:"Nebula Lord",     xp:5000, c:"#8b8bff", c2:"#3a35d8"},
+  {name:"Cosmic Legend",   xp:7500, c:"#ffffff", c2:"#ff7bd5"}
+];
+/* ================================================ */
+
+const KEY="quitquest.v1";
+let S=load();
+function load(){try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const $=id=>document.getElementById(id);
+
+function rankIndex(xp){let r=0;for(let i=0;i<RANKS.length;i++) if(xp>=RANKS[i].xp) r=i;return r}
+
+/* ---------- badge art ---------- */
+let uid=0;
+function badge(i){
+  const R=RANKS[i], id="g"+(uid++);
+  const pts=Math.min(i+4,13), step=Math.PI/pts;
+  let d="";
+  for(let k=0;k<pts*2;k++){
+    const r=k%2?24:40, a=k*step-Math.PI/2;
+    d+=(k?"L":"M")+(50+r*Math.cos(a)).toFixed(2)+" "+(50+r*Math.sin(a)).toFixed(2);
+  }
+  d+="Z";
+  const ring2=i>=4?`<circle class="spin" cx="50" cy="50" r="48.5" fill="none" stroke="${R.c}" stroke-width=".8" stroke-dasharray="2 4" opacity=".8"/>`:"";
+  const ring3=i>=7?`<circle class="spin rev" cx="50" cy="50" r="45" fill="none" stroke="${R.c2}" stroke-width="1.2" stroke-dasharray="10 6" opacity=".9"/>`:"";
+  const orbit=i>=2?`<g class="spin"><circle cx="50" cy="2.5" r="${i>=8?3:2.2}" fill="${R.c}"/></g>`:"";
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="${id}b" cx="50%" cy="35%" r="75%"><stop offset="0" stop-color="#232a66"/><stop offset="1" stop-color="#080b24"/></radialGradient>
+      <linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${R.c}"/><stop offset="1" stop-color="${R.c2}"/></linearGradient>
+    </defs>
+    ${ring2}${ring3}
+    <circle cx="50" cy="50" r="43" fill="url(#${id}b)" stroke="url(#${id}s)" stroke-width="2.5"/>
+    <path d="${d}" fill="url(#${id}s)" stroke="#fff" stroke-opacity=".55" stroke-width=".6" stroke-linejoin="round"/>
+    <circle cx="50" cy="50" r="10" fill="#080b24" stroke="${R.c}" stroke-width="1.5"/>
+    <text x="50" y="54.6" text-anchor="middle" font-size="13" font-weight="900" fill="${R.c}" font-family="-apple-system,Helvetica,Arial,sans-serif">${i+1}</text>
+    ${orbit}
+  </svg>`;
+}
+
+/* ---------- core logic ---------- */
+function sync(){
+  const now=Date.now();
+  const full=Math.floor((now-S.streakStart)/DAY_MS);
+  if(full>S.credited){
+    const add=full-S.credited;
+    S.xp+=add*DAY_XP; S.daysEarned+=add; S.credited=full;
+  }
+  S.best=Math.max(S.best,now-S.streakStart);
+  save();
+}
+function checkRank(){
+  const idx=rankIndex(S.xp);
+  if(idx>S.shownRank){
+    const from=S.shownRank; S.shownRank=idx; save();
+    showRank(idx,"up",from);
+  } else if(idx<S.shownRank){
+    S.shownRank=idx; save();
+  }
+}
+
+/* ---------- rendering ---------- */
+let lastBadgeIdx=-1;
+function render(){
+  const idx=rankIndex(S.xp), R=RANKS[idx], nxt=RANKS[idx+1];
+  document.documentElement.style.setProperty("--glow",R.c);
+  if(lastBadgeIdx!==idx){ $("badge").innerHTML=badge(idx); lastBadgeIdx=idx; renderLadder(idx); }
+  $("rankName").textContent=R.name;
+  $("rankNum").textContent="Rank "+(idx+1)+" of "+RANKS.length;
+  $("xpNow").textContent=S.xp.toLocaleString();
+  if(nxt){
+    const span=nxt.xp-R.xp, have=S.xp-R.xp;
+    $("fill").style.width=Math.max(2,have/span*100)+"%";
+    $("xpGoal").textContent=(nxt.xp-S.xp).toLocaleString()+" XP to "+nxt.name;
+  } else {
+    $("fill").style.width="100%";
+    $("xpGoal").textContent="Max rank reached";
+  }
+  $("sBest").textContent=fmtShort(S.best);
+  $("sDays").textContent=S.daysEarned;
+  $("sHits").textContent=S.hits;
+}
+function renderLadder(idx){
+  $("ladder").innerHTML=RANKS.map((r,i)=>
+    `<div class="rung ${i>idx?"locked":""} ${i===idx?"cur":""}" style="--c:${r.c}">${badge(i)}<div>${r.name}</div></div>`).join("");
+}
+const pad=n=>String(n).padStart(2,"0");
+function fmtShort(ms){
+  const d=Math.floor(ms/DAY_MS), h=Math.floor(ms%DAY_MS/3600000);
+  return d>0?d+"d "+h+"h":h+"h "+Math.floor(ms%3600000/60000)+"m";
+}
+function tick(){
+  sync(); checkRank();
+  const e=Date.now()-S.streakStart;
+  const d=Math.floor(e/DAY_MS), h=Math.floor(e%DAY_MS/3600000), m=Math.floor(e%3600000/60000), s=Math.floor(e%60000/1000);
+  $("timer").innerHTML=`${d}<small>d</small>${pad(h)}<small>h</small>${pad(m)}<small>m</small>${pad(s)}<small>s</small>`;
+  const left=DAY_MS-(e%DAY_MS);
+  const lh=Math.floor(left/3600000), lm=Math.floor(left%3600000/60000), ls=Math.floor(left%60000/1000);
+  $("next").textContent=`Next +${DAY_XP} XP in ${pad(lh)}:${pad(lm)}:${pad(ls)}`;
+  render();
+}
+
+/* ---------- vape hit ---------- */
+$("hit").onclick=()=>{
+  const lose=Math.min(HIT_PENALTY,S.xp);
+  $("confirmText").textContent=`This costs you ${HIT_PENALTY} XP and resets your timer. No judgement — log it honestly and keep going.`;
+  $("confirm").classList.add("show");
+};
+$("cancelHit").onclick=()=>$("confirm").classList.remove("show");
+$("okHit").onclick=()=>{
+  $("confirm").classList.remove("show");
+  sync();
+  const before=rankIndex(S.xp);
+  S.xp=Math.max(0,S.xp-HIT_PENALTY);
+  S.hits++; S.streakStart=Date.now(); S.credited=0;
+  save();
+  const after=rankIndex(S.xp);
+  if(navigator.vibrate) navigator.vibrate([120,60,200]);
+  $("flash").classList.remove("go"); void $("flash").offsetWidth; $("flash").classList.add("go");
+  $("app").classList.remove("shake"); void $("app").offsetWidth; $("app").classList.add("shake");
+  toast("−"+HIT_PENALTY+" XP");
+  if(after<before){ S.shownRank=after; save(); setTimeout(()=>showRank(after,"down",before),700); }
+  tick();
+};
+function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}
+
+/* ---------- rank overlay + particles ---------- */
+let fxRun=false, parts=[];
+function showRank(idx,mode,from){
+  const R=RANKS[idx], o=$("rankOverlay");
+  document.documentElement.style.setProperty("--glow",R.c);
+  o.classList.toggle("down",mode==="down");
+  $("ruTitle").textContent=mode==="up"?"Rank up":"Rank lost";
+  $("ruBadge").innerHTML=badge(idx);
+  $("ruName").textContent=R.name;
+  $("ruSub").textContent=mode==="up"?"Another step across the galaxy. Keep going.":"You dropped from "+RANKS[from].name+". Climb back — you've done it before.";
+  o.classList.add("show");
+  if(navigator.vibrate&&mode==="up") navigator.vibrate([60,40,60,40,160]);
+  startFx(R,mode);
+}
+$("rankOverlay").onclick=()=>{$("rankOverlay").classList.remove("show");fxRun=false;lastBadgeIdx=-1;render()};
+function startFx(R,mode){
+  const c=$("fx"), x=c.getContext("2d"), dpr=Math.min(devicePixelRatio||1,2);
+  c.width=innerWidth*dpr; c.height=innerHeight*dpr; x.scale(dpr,dpr);
+  parts=[]; const cx=innerWidth/2, cy=innerHeight*0.38;
+  const cols=mode==="up"?[R.c,R.c2,"#fff","#ffd95a"]:["#ff4d6d","#7a1630","#ff9bb0"];
+  const n=mode==="up"?170:60;
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, sp=(mode==="up"?2+Math.random()*9:1+Math.random()*4);
+    parts.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-(mode==="up"?2:-1),
+      life:1,decay:.006+Math.random()*.01,s:2+Math.random()*4,col:cols[i%cols.length],star:Math.random()<.4});
+  }
+  let ring=0; fxRun=true;
+  (function loop(){
+    if(!fxRun) return;
+    x.clearRect(0,0,innerWidth,innerHeight);
+    if(mode==="up"&&ring<1){ring+=.02;x.strokeStyle=R.c;x.globalAlpha=1-ring;x.lineWidth=4;
+      x.beginPath();x.arc(cx,cy,ring*Math.max(innerWidth,innerHeight)*.7,0,7);x.stroke();}
+    for(const p of parts){
+      p.x+=p.vx;p.y+=p.vy;p.vy+=mode==="up"?.07:.12;p.vx*=.99;p.life-=p.decay;
+      if(p.life<=0) continue;
+      x.globalAlpha=Math.max(0,p.life);x.fillStyle=p.col;
+      if(p.star){x.save();x.translate(p.x,p.y);x.rotate(p.life*8);x.fillRect(-p.s,-p.s/4,p.s*2,p.s/2);x.fillRect(-p.s/4,-p.s,p.s/2,p.s*2);x.restore()}
+      else{x.beginPath();x.arc(p.x,p.y,p.s/2,0,7);x.fill()}
+    }
+    x.globalAlpha=1;
+    if(parts.some(p=>p.life>0)||ring<1) requestAnimationFrame(loop);
+  })();
+}
+
+/* ---------- setup / reset ---------- */
+function localISO(d){const z=new Date(d-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,16)}
+function openSetup(){ $("startInput").value=localISO(new Date()); $("startInput").max=localISO(new Date()); $("setup").classList.add("show"); }
+$("startBtn").onclick=()=>{
+  let t=new Date($("startInput").value).getTime();
+  if(!t||t>Date.now()) t=Date.now();
+  S={xp:0,streakStart:t,credited:0,daysEarned:0,hits:0,best:0,shownRank:0};
+  sync(); S.shownRank=rankIndex(S.xp); save();
+  $("setup").classList.remove("show"); lastBadgeIdx=-1; tick();
+};
+$("resetLink").onclick=e=>{
+  e.preventDefault();
+  if(confirm("Reset all progress and start over?")){ localStorage.removeItem(KEY); S=null; location.reload(); }
+};
+
+/* ---------- starfield ---------- */
+(function(){
+  const c=$("stars"), x=c.getContext("2d");
+  let W,H,stars=[],shoot=null,dpr=Math.min(devicePixelRatio||1,2);
+  function size(){W=innerWidth;H=innerHeight;c.width=W*dpr;c.height=H*dpr;x.setTransform(dpr,0,0,dpr,0,0);
+    const n=Math.floor(W*H/2800);
+    stars=Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,z:Math.random(),t:Math.random()*6.28}));}
+  addEventListener("resize",size); size();
+  function frame(t){
+    x.clearRect(0,0,W,H);
+    for(const s of stars){
+      s.y+=.05+s.z*.28; s.x-=.02+s.z*.08;
+      if(s.y>H){s.y=-2;s.x=Math.random()*W} if(s.x<0)s.x=W;
+      const a=.35+.65*Math.abs(Math.sin(t/1000*(.6+s.z)+s.t));
+      x.globalAlpha=a*(.4+s.z*.6);
+      x.fillStyle=s.z>.85?"#bfe9ff":s.z>.6?"#fff":"#9aa7ff";
+      const r=.4+s.z*1.3; x.beginPath();x.arc(s.x,s.y,r,0,7);x.fill();
+    }
+    if(!shoot&&Math.random()<.004) shoot={x:Math.random()*W,y:Math.random()*H*.4,vx:-7-Math.random()*5,vy:4+Math.random()*3,l:1};
+    if(shoot){
+      x.globalAlpha=shoot.l;const g=x.createLinearGradient(shoot.x,shoot.y,shoot.x-shoot.vx*7,shoot.y-shoot.vy*7);
+      g.addColorStop(0,"#fff");g.addColorStop(1,"rgba(255,255,255,0)");
+      x.strokeStyle=g;x.lineWidth=1.6;x.beginPath();x.moveTo(shoot.x,shoot.y);x.lineTo(shoot.x-shoot.vx*7,shoot.y-shoot.vy*7);x.stroke();
+      shoot.x+=shoot.vx;shoot.y+=shoot.vy;shoot.l-=.012; if(shoot.l<=0)shoot=null;
+    }
+    x.globalAlpha=1;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ---------- boot ---------- */
+if(S&&typeof S.streakStart==="number"){ tick(); }
+else { openSetup(); }
+setInterval(()=>{ if(S&&S.streakStart) tick(); },1000);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&S&&S.streakStart) tick(); });
+
+if("serviceWorker" in navigator){ addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
+</script>
+</body>
+</html>
