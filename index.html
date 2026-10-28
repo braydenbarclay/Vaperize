@@ -50,6 +50,7 @@
   #timer small{font-size:13px;color:var(--muted);font-weight:600;margin:0 6px 0 2px;letter-spacing:.1em}
   #timerLabel{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin-top:2px}
 
+  #pb{margin-top:8px;font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.04em}
   .card{width:100%;margin-top:16px;background:var(--glass);border:1px solid var(--line);border-radius:18px;
     padding:14px 16px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   .xprow{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:8px}
@@ -66,7 +67,7 @@
 
   .ladder{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 6px;margin-top:6px;scrollbar-width:none}
   .ladder::-webkit-scrollbar{display:none}
-  .rung{flex:0 0 64px;text-align:center;font-size:9px;letter-spacing:.06em;color:var(--muted)}
+  .rung{flex:0 0 70px;text-align:center;font-size:9px;letter-spacing:.06em;color:var(--muted)}
   .rung svg{width:52px;height:52px}
   .rung.locked svg{filter:grayscale(1) brightness(.45)}
   .rung.cur{color:var(--text)}
@@ -138,6 +139,7 @@
     <div id="rankNum"></div>
     <div id="timer"></div>
     <div id="timerLabel">Time vape-free</div>
+    <div id="pb"></div>
   </section>
 
   <section class="card">
@@ -147,7 +149,7 @@
   </section>
 
   <section class="stats">
-    <div class="stat"><b id="sBest">0d</b><span>Best streak</span></div>
+    <div class="stat"><b id="sMoney">$0.00</b><span>Saved · $50/2wk</span></div>
     <div class="stat"><b id="sDays">0</b><span>Days earned</span></div>
     <div class="stat"><b id="sHits">0</b><span>Slips</span></div>
   </section>
@@ -193,20 +195,40 @@
 <script>
 /* ============ SETTINGS (edit these) ============ */
 const DAY_MS      = 24*60*60*1000;
-const DAY_XP      = 100;   // XP earned per full 24h without vaping
-const HIT_PENALTY = 150;   // XP lost per vape hit
-const RANKS = [
-  {name:"Space Cadet",     xp:0,    c:"#9aa7c7", c2:"#5c6a8f"},
-  {name:"Cosmonaut",       xp:100,  c:"#7cf0ff", c2:"#2a8fb0"},
-  {name:"Pilot",           xp:300,  c:"#6df7a8", c2:"#1f9b62"},
-  {name:"Navigator",       xp:600,  c:"#b6f56a", c2:"#6b9a1b"},
-  {name:"Commander",       xp:1000, c:"#ffd95a", c2:"#c08a10"},
-  {name:"Captain",         xp:1600, c:"#ffa94d", c2:"#c0560e"},
-  {name:"Star Admiral",    xp:2400, c:"#ff6b8b", c2:"#b01e49"},
-  {name:"Galactic Warden", xp:3500, c:"#d17bff", c2:"#7a24c9"},
-  {name:"Nebula Lord",     xp:5000, c:"#8b8bff", c2:"#3a35d8"},
-  {name:"Cosmic Legend",   xp:7500, c:"#ffffff", c2:"#ff7bd5"}
+const DAY_XP       = 100;   // XP earned per full 24h without vaping
+const PENALTY_MIN  = 150;   // XP lost per hit at the lowest rank
+const PENALTY_MAX  = 200;   // XP lost per hit at the top rank (scales up in between)
+const MONEY_PER_PERIOD = 50; // $ you would have spent...
+const PERIOD_DAYS      = 14; // ...every this many days
+
+// Tiers, worst to best. subs = how many sub-ranks (Bronze 1, 2, 3...)
+const TIERS = [
+  {n:"Bronze",   subs:3, c:"#e8924a", c2:"#7a4416"},
+  {n:"Silver",   subs:3, c:"#dfe5f2", c2:"#7d889f"},
+  {n:"Gold",     subs:3, c:"#ffd34d", c2:"#b8860b"},
+  {n:"Platinum", subs:3, c:"#6ff2d6", c2:"#1d8f7c"},
+  {n:"Diamond",  subs:3, c:"#6fb8ff", c2:"#2a52e0"},
+  {n:"Elite",    subs:1, c:"#c77bff", c2:"#6b21c9"},
+  {n:"Champion", subs:1, c:"#ff5d73", c2:"#b0122f"},
+  {n:"Unreal",   subs:1, c:"#ffffff", c2:"#ff7bd5"}
 ];
+// Days of vape-free time needed to climb from each rank to the next (17 steps, sums to 365).
+// Early ranks are quick, later ones take longer; Champion -> Unreal is 75 days.
+const GAPS_DAYS = [5,5,6,8,9,10,12,13,15,17,19,22,25,29,35,60,75];
+const RANKS = [];
+(function(){
+  let days=0,k=0;
+  TIERS.forEach((t,ti)=>{
+    for(let s=1;s<=t.subs;s++){
+      RANKS.push({name:t.subs>1?t.n+" "+s:t.n, tier:ti, sub:t.subs>1?s:0, days:days, xp:days*DAY_XP,
+                  c:t.c, c2:t.c2, orb:t.subs>1?s:ti-1});
+      days+=GAPS_DAYS[k++]||0;
+    }
+  });
+})();
+function penalty(idx){
+  return Math.round((PENALTY_MIN+(PENALTY_MAX-PENALTY_MIN)*idx/(RANKS.length-1))/5)*5;
+}
 /* ================================================ */
 
 const KEY="quitquest.v1";
@@ -221,27 +243,30 @@ function rankIndex(xp){let r=0;for(let i=0;i<RANKS.length;i++) if(xp>=RANKS[i].x
 let uid=0;
 function badge(i){
   const R=RANKS[i], id="g"+(uid++);
-  const pts=Math.min(i+4,13), step=Math.PI/pts;
+  const pts=5+R.tier, step=Math.PI/pts;
   let d="";
   for(let k=0;k<pts*2;k++){
     const r=k%2?24:40, a=k*step-Math.PI/2;
     d+=(k?"L":"M")+(50+r*Math.cos(a)).toFixed(2)+" "+(50+r*Math.sin(a)).toFixed(2);
   }
   d+="Z";
-  const ring2=i>=4?`<circle class="spin" cx="50" cy="50" r="48.5" fill="none" stroke="${R.c}" stroke-width=".8" stroke-dasharray="2 4" opacity=".8"/>`:"";
-  const ring3=i>=7?`<circle class="spin rev" cx="50" cy="50" r="45" fill="none" stroke="${R.c2}" stroke-width="1.2" stroke-dasharray="10 6" opacity=".9"/>`:"";
-  const orbit=i>=2?`<g class="spin"><circle cx="50" cy="2.5" r="${i>=8?3:2.2}" fill="${R.c}"/></g>`:"";
+  const ring2=R.tier>=2?`<circle class="spin" cx="50" cy="50" r="48.5" fill="none" stroke="${R.c}" stroke-width=".8" stroke-dasharray="2 4" opacity=".8"/>`:"";
+  const ring3=R.tier>=4?`<circle class="spin rev" cx="50" cy="50" r="45" fill="none" stroke="${R.c2}" stroke-width="1.2" stroke-dasharray="10 6" opacity=".9"/>`:"";
+  const ring4=R.tier>=7?`<circle cx="50" cy="50" r="49.5" fill="none" stroke="${R.c2}" stroke-width="1.4" opacity=".9"/>`:"";
+  let orbs="";
+  for(let k=0;k<R.orb;k++) orbs+=`<circle cx="50" cy="2.5" r="${R.tier>=5?2.8:2.2}" fill="${R.c}" transform="rotate(${(k*360/R.orb).toFixed(1)} 50 50)"/>`;
+  const label=R.sub?R.sub:["E","C","U"][R.tier-5];
   return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <radialGradient id="${id}b" cx="50%" cy="35%" r="75%"><stop offset="0" stop-color="#232a66"/><stop offset="1" stop-color="#080b24"/></radialGradient>
       <linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${R.c}"/><stop offset="1" stop-color="${R.c2}"/></linearGradient>
     </defs>
-    ${ring2}${ring3}
+    ${ring2}${ring3}${ring4}
     <circle cx="50" cy="50" r="43" fill="url(#${id}b)" stroke="url(#${id}s)" stroke-width="2.5"/>
     <path d="${d}" fill="url(#${id}s)" stroke="#fff" stroke-opacity=".55" stroke-width=".6" stroke-linejoin="round"/>
     <circle cx="50" cy="50" r="10" fill="#080b24" stroke="${R.c}" stroke-width="1.5"/>
-    <text x="50" y="54.6" text-anchor="middle" font-size="13" font-weight="900" fill="${R.c}" font-family="-apple-system,Helvetica,Arial,sans-serif">${i+1}</text>
-    ${orbit}
+    <text x="50" y="54.6" text-anchor="middle" font-size="13" font-weight="900" fill="${R.c}" font-family="-apple-system,Helvetica,Arial,sans-serif">${label}</text>
+    <g class="spin">${orbs}</g>
   </svg>`;
 }
 
@@ -283,7 +308,9 @@ function render(){
     $("fill").style.width="100%";
     $("xpGoal").textContent="Max rank reached";
   }
-  $("sBest").textContent=fmtShort(S.best);
+  const clean=(S.cleanBanked||0)+(Date.now()-S.streakStart);
+  $("sMoney").textContent="$"+(clean/DAY_MS*MONEY_PER_PERIOD/PERIOD_DAYS).toFixed(2);
+  $("pb").textContent="Personal best: "+fmtShort(S.best);
   $("sDays").textContent=S.daysEarned;
   $("sHits").textContent=S.hits;
 }
@@ -309,23 +336,25 @@ function tick(){
 
 /* ---------- vape hit ---------- */
 $("hit").onclick=()=>{
-  const lose=Math.min(HIT_PENALTY,S.xp);
-  $("confirmText").textContent=`This costs you ${HIT_PENALTY} XP and resets your timer. No judgement — log it honestly and keep going.`;
+  sync();
+  const pen=penalty(rankIndex(S.xp));
+  $("confirmText").textContent=`This costs you ${pen} XP and resets your timer. No judgement — log it honestly and keep going.`;
   $("confirm").classList.add("show");
 };
 $("cancelHit").onclick=()=>$("confirm").classList.remove("show");
 $("okHit").onclick=()=>{
   $("confirm").classList.remove("show");
   sync();
-  const before=rankIndex(S.xp);
-  S.xp=Math.max(0,S.xp-HIT_PENALTY);
-  S.hits++; S.streakStart=Date.now(); S.credited=0;
+  const before=rankIndex(S.xp), pen=penalty(before), now=Date.now();
+  S.xp=Math.max(0,S.xp-pen);
+  S.cleanBanked=(S.cleanBanked||0)+(now-S.streakStart);
+  S.hits++; S.streakStart=now; S.credited=0;
   save();
   const after=rankIndex(S.xp);
   if(navigator.vibrate) navigator.vibrate([120,60,200]);
   $("flash").classList.remove("go"); void $("flash").offsetWidth; $("flash").classList.add("go");
   $("app").classList.remove("shake"); void $("app").offsetWidth; $("app").classList.add("shake");
-  toast("−"+HIT_PENALTY+" XP");
+  toast("−"+pen+" XP");
   if(after<before){ S.shownRank=after; save(); setTimeout(()=>showRank(after,"down",before),700); }
   tick();
 };
@@ -381,7 +410,7 @@ function openSetup(){ $("startInput").value=localISO(new Date()); $("startInput"
 $("startBtn").onclick=()=>{
   let t=new Date($("startInput").value).getTime();
   if(!t||t>Date.now()) t=Date.now();
-  S={xp:0,streakStart:t,credited:0,daysEarned:0,hits:0,best:0,shownRank:0};
+  S={xp:0,streakStart:t,credited:0,daysEarned:0,hits:0,best:0,cleanBanked:0,shownRank:0};
   sync(); S.shownRank=rankIndex(S.xp); save();
   $("setup").classList.remove("show"); lastBadgeIdx=-1; tick();
 };
@@ -422,7 +451,7 @@ $("resetLink").onclick=e=>{
 })();
 
 /* ---------- boot ---------- */
-if(S&&typeof S.streakStart==="number"){ tick(); }
+if(S&&typeof S.streakStart==="number"){ S.cleanBanked=S.cleanBanked||0; tick(); }
 else { openSetup(); }
 setInterval(()=>{ if(S&&S.streakStart) tick(); },1000);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&S&&S.streakStart) tick(); });
